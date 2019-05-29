@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>지그재그</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no, target-densityDpi=device-dpi">
+    <link rel="stylesheet" type="text/css" href="resources/css/jxsort-ver-x1.css">
+    <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+    <script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.js"></script>
+    <script src="resources/js/jxsort-ver-x1.js" type="text/javascript"></script>
+
+
+
+<style type="text/css">
+* {
+    margin: 0;
+    padding: 0;
+}
+
+li {
+    list-style: none;
+}
+
+html  {height: 100%; }
+body { height: 100%; }
+
+h2 {text-align: center;}
+
+ .explain {padding:0 20%;}
+.init_btn {margin:30px auto;text-align: center;}
+.init_btn .btn_create {border: #aaa solid 1px;display: inline-block;padding: 10px;border-radius: 10px;}
+.init_btn .btn_destroy {border: #aaa solid 1px;display: inline-block;padding: 10px;border-radius: 10px;}
+.temp {margin-top: 100px;background-color: #eee;}
+
+</style>
+
+<script type="text/javascript">
+
+/*
+//함수 존재여부 체크
+var exist = existFunction("imagesLoaded");
+if( exist )
+{
+    //clearInterval(fncChkTime);
+    //console.log('imagesLoaded 함수가 있으면 ajaxInit함수에서 데이터 로드');
+    ajaxInit('./resources/json/data.json');
+}
+else
+{
+    console.log('imagesLoaded 함수가 없다');
+}
+
+function existFunction(func)
+{
+    //console.log("existFunction 함수에서 " + func + "가 존재하는지 체크 ")
+    return typeof window[func]=== "function";
+}
+*/
+
+ajaxInit('./resources/json/data.json');
+
+var jxsort;
+var jsonData; //데이터
+var nMoreImg = 5; //몇개씩 보여줄것인가
+
+
+var nCurrImg = 0 //시작 데이터 로드
+var nNextImg = nCurrImg + nMoreImg  //다음 데이터
+var nTotalImg; //총 데이터
+
+var $tempImgDiv = $("<div class='temp' style='display:block'></div>"); //로드된 데이터의 객체를 임시로 붙여두는 곳
+
+function ajaxInit(url) {
+
+    $.ajax({
+        url: url,
+        type: 'GET',
+        dataType: 'json'
+    })
+    .done(function() {
+        //console.log("success");
+    })
+    .fail(function() {
+        //console.log("error");
+    })
+    .always(function(e) {
+        /*
+        1. json 데이터가 로드되면 jsonData 변수에 담고 총 데이터 갯수를 nTotalImg 변수에 담고
+        2. 기본 소트 플러그인을 실행을 하고
+        2. 데이터를 가공을 하고 붙인다. imgLoadMore()
+        */
+
+        jsonData = e;
+        nTotalImg = e.data.length;
+        if ( nTotalImg > 0 )
+        {
+            //$('body').append($tempImgDiv);
+
+            $('.jx-grid > .jx-list > .jx-warp').empty(); //안에를 삭제를 하고
+
+            jxsort = new JXSORT($('.jx-grid'), {
+                //bPercent : true, // ** jx-box가 width 단위가 % 이면 true를 줘야함
+                //bSequence: true
+                //sFilterName : 'bon'
+                //bGroup : true
+            });
+            imgLoadMore();
+        }
+        else
+        {
+            //console.log('data가 0개이거나 없다')
+        }
+
+    });
+}
+
+
+function imgLoadMore()
+{
+    //console.log('imgLoadMore ' , jsonData)
+    nNextImg = nCurrImg + nMoreImg;
+    if ( nNextImg  >= nTotalImg )
+    {
+        nNextImg = nTotalImg;
+    }
+    //데이터를 가공하여 $tempImgDiv에 붙인다.
+    for( var i = nCurrImg ; i < nNextImg ; i++ )
+    {
+        var num = jsonData.data[i].num ;
+        //console.log(i , jsonData.data[i].img)
+
+        var $box = $('<div class="jx-box jx-box-'+num+' ' +jsonData.data[i].title + '">'+
+                        '<a href="" class="jx-cont">'+
+                            '<span class="num">'+  num +'</span>'+
+                            '<span class="title">'+jsonData.data[i].title+'</span>'+
+                            '<span class="info"><img src="./resources/imgs/'+jsonData.data[i].img+'"></span>' +
+                        '</a>'+
+                      '</div>');
+        //console.log($box)
+        $tempImgDiv.append($box);
+    }
+
+    nCurrImg = nNextImg; // 시작을 다시 셋팅하고
+
+    //여기서부터 위에 $tempImgDiv 붙여진 이미지 로딩을 체크하여 플러그인에 붙인다.
+    var nLoadImg = 0; //템프에 로딩할 이미지가 다 되었는지를 판단하고
+    $tempImgDiv.imagesLoaded().always( function( instance ) { })
+        .done( function( instance ) {
+        //console.log('all images successfully loaded');
+            //console.log('temp에 객체를 붙이고 실제로 이미지가 로드되면 그때 플러그인에  setMore로 실행을 하자  ' , nLoadImg );
+
+            for(var i = 0; i< nLoadImg ; i++)
+            {
+                //console.log('이미지 가로 사이즈 ' , i , $tempImgDiv.find('.jx-box').eq(0).width() , nMoreImg)
+                /*
+                jxsort.setMore ( 매개변수 1 , 매개변수 2 )
+                매개변수1 : 가공된 데이터를 넣는거고
+                매개변수2 : 데이터를 붙일때마다 resize을 하면 불필요한 계산을 계속 하는것이라서 몇개씩 붙인것인지를 넣어준다.
+                그래서 3개씩이다 하면 3을 넣어주고 안에서 3개째 데이터를 붙이면 end로 간주하고 리사이징을 하게 된다.
+                */
+                jxsort.setMore( $tempImgDiv.find('.jx-box').eq(0) , nLoadImg );
+            }
+
+            // 퍼세트이거나 풀사이즈일때는 스크롤바가 생기전에 뿌려지는것때문에 리사이징이 필요함
+            setTimeout(function(){
+                //jxsort.resize();
+            },300)
+        })
+        .fail( function() {
+            //console.log('all images loaded, at least one is broken');
+        })
+        .progress( function( instance, image ) {
+            var result = image.isLoaded ? 'loaded' : 'broken';
+            //console.log( 'image is ' + result + ' for ' + image.img.src );
+            nLoadImg++;
+        });
+}//imgLoadMore
+
+
+$(function(e) {
+
+    $('.jx-sort-btn .btn-more').click(function(e){
+        imgLoadMore();
+    });
+
+    //플러그인 기능을 다시 초기화
+    $('.btn_create').on('click',function(e){
+         jxsort.init();
+    });
+
+    //플러그인 기능을 없애고
+    $('.btn_destroy').on('click',function(e){
+         jxsort.destroy();
+    });
+
+})
+
+
+</script>
+</head>
+<body>
+
+<h2>정렬 소트</h2>
+<div class="explain">
+    <h3>플러그인 실행 순서</h3>
+    <p>1. json 파일을 ajax로 로딩하고 JXSORT 플러그인을 한번은 실행을 한다. </p>
+    <p>2. 데이터를 정해진 갯수만큼(nMoreImg) 객체를 생성한후 객체 안에 이미지를 imagesLoaded 플러그인을 사용하여 이미지 로딩을 완료를 체크한다.</p>
+    <p>3. 이미지 로딩체크가 완료되면 JXSORT 플러그인에 setMore() 함수를 사용하여 객체를 넣는다.</p>
+    <br>
+</div>
+
+<div class="init_btn">
+    <div class="btn_create">플러그인 기능 활설화</div>
+    <div class="btn_destroy">플러그인 기능 파괴</div>
+</div>
+
+<div class="jx-grid">
+    <div class="jx-list">
+        <div class="jx-warp">
+            <!--
+            <div class="jx-box jx-box-1">
+                <a href="" class="jx-cont">
+                    <span class="num">1</span>
+                    <span class="title">bon</span>
+                    <span class="info"><img src="./resources/imgs/thumb_1.jpg"></span>
+                </a>
+            </div>
+            -->
+        </div>
+    </div>
+
+    <div class="jx-sort-btn">
+        <div>
+            <button class="jx-btns btn-filter all">show all</button>
+            <button class="jx-btns btn-filter bon ">bon 만 보이게</button>
+            <button class="jx-btns btn-filter yezac">yezac만 보이게</button>
+            <button class="jx-btns btn-filter carries">carries만 보이게</button>
+        </div>
+        <div>
+            <button class="jx-btns btn-align descending">num descending 내림차순 3 2 1...</button>
+            <button class="jx-btns btn-align ascending">num ascending 오름차순 ... 1 2 3</button>
+        </div>
+        <div>
+            <button class="jx-btns btn-groupview descending">그룹별로 내림차순</button>
+            <button class="jx-btns btn-groupview ascending">그룹별로 오름차순 </button>
+        </div>
+        <div>
+            <button class="jx-btns btn-more">more</button>
+        </div>
+    </div>
+
+</div>
+
+
+
+
+</body>
+</html>
